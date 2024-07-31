@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phishing Email Detection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <h1>Phishing Email Detection</h1>
+        <div class="form-container">
+            <form id="emailForm">
+                <textarea id="emailText" placeholder="Paste your email content here"></textarea>
+                <label for="modelSelect">Choose a model:</label>
+                <select id="modelSelect">
+                    <option value="naive_bayes">Naive Bayes</option>
+                    <option value="decision_tree">Decision Tree</option>
+                    <option value="svm">SVM</option>
+                    <option value="random_forest">Random Forest</option>
+                    <option value="lstm">LSTM</option>
+                </select>
+                <button type="submit">Check Email</button>
+            </form>
+            <div id="result"></div>
+        </div>
+        <div class="adversarial-container">
+            <form id="adversarialForm">
+                <textarea id="adversarialEmails" placeholder="Paste multiple emails separated by new lines"></textarea>
+                <label for="adversarialModelSelect">Choose a model:</label>
+                <select id="adversarialModelSelect">
+                    <option value="naive_bayes">Naive Bayes</option>
+                    <option value="decision_tree">Decision Tree</option>
+                    <option value="svm">SVM</option>
+                    <option value="random_forest">Random Forest</option>
+                    <option value="lstm">LSTM</option>
+                </select>
+                <button type="submit">Evaluate Adversarial</button>
+            </form>
+            <div id="adversarialResult"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('emailForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const emailText = document.getElementById('emailText').value.trim();
+            const modelSelect = document.getElementById('modelSelect').value;
+
+            if (!emailText) {
+                alert('Email content cannot be empty.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email: emailText, model: modelSelect }),
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    document.getElementById('result').innerHTML = `
+                        <p><strong>Prediction:</strong> ${result.prediction}</p>
+                    `;
+                } else {
+                    document.getElementById('result').innerText = `Error: ${result.error}`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('result').innerText = 'An error occurred. Please try again.';
+            }
+        });
+
+        document.getElementById('adversarialForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const emailsText = document.getElementById('adversarialEmails').value.trim();
+            const emails = emailsText.split('\n').filter(email => email.trim() !== '');
+            const labels = emails.map(() => 1);  // Assuming all are phishing for simplicity
+            const modelSelect = document.getElementById('adversarialModelSelect').value;
+
+            if (emails.length === 0) {
+                alert('Emails cannot be empty.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/evaluate_adversarial', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ emails: emails, labels: labels, model: modelSelect }),
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    document.getElementById('adversarialResult').innerHTML = `
+                        <p><strong>Model:</strong> ${result.model}</p>
+                        <p><strong>Adversarial Accuracy:</strong> ${(result.adversarial_accuracy * 100).toFixed(2)}%</p>
+                    `;
+                } else {
+                    document.getElementById('adversarialResult').innerText = `Error: ${result.error}`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('adversarialResult').innerText = 'An error occurred. Please try again.';
+            }
+        });
+    </script>
+</body>
+</html>
